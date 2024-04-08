@@ -126,9 +126,16 @@ class Employee:
 
     @classmethod
     def create(cls, name, job_title, department_id):
-        """ Initialize a new Employee instance and save the object to the database """
+        """ Initialize a new Employee instance and save the object to the database. Return the new instance. """
         employee = cls(name, job_title, department_id)
-        employee.save()
+        sql = """
+            INSERT INTO employees (name, job_title, department_id)
+            VALUES (?, ?, ?)
+        """
+        CURSOR.execute(sql, (employee.name, employee.job_title, employee.department_id))
+        CONN.commit()
+        employee.id = CURSOR.lastrowid
+        cls.all[employee.id] = employee
         return employee
 
     @classmethod
@@ -186,5 +193,11 @@ class Employee:
         return cls.instance_from_db(row) if row else None
 
     def reviews(self):
-        """Return list of reviews associated with current employee"""
-        pass
+        # Import Review within the function to avoid circular import
+        from review import Review
+        sql = """
+            SELECT * FROM reviews
+            WHERE employee_id = ?
+        """
+        rows = CURSOR.execute(sql, (self.id,)).fetchall()
+        return [Review.instance_from_db(row) for row in rows]
